@@ -30,7 +30,7 @@ logger.info("Defining tutorial import subroutine")
 # a transient working directory?
 @parsl.bash_app(cache=True)
 def import_ci_hsc():
-    return "rm -rf DATA && rm -rf ci_hsc && git clone https://github.com/lsst/ci_hsc && installTransmissionCurves.py DATA && ln -s $(pwd)/ci_hsc/CALIB/ DATA/CALIB && mkdir -p DATA/ref_cats && ln -s $(pwd)/ci_hsc/ps1_pv3_3pi_20170110 DATA/ref_cats/ps1_pv3_3pi_20170110 "
+    return "rm -rf DATA && rm -rf ci_hsc && git clone https://github.com/lsst/ci_hsc && setup -j -r ci_hsc && mkdir DATA && echo lsst.obs.hsc.HscMapper > DATA/_mapper && ingestImages.py DATA $CI_HSC_DIR/raw/*.fits --mode=link && installTransmissionCurves.py DATA && ln -s $CI_HSC_DIR/ci_hsc/CALIB/ DATA/CALIB && mkdir -p DATA/ref_cats && ln -s $CI_HSC_DIR/ci_hsc/ps1_pv3_3pi_20170110 DATA/ref_cats/ps1_pv3_3pi_20170110 "
 
 # this assumes that we're running in the same
 # python process - using thread local executor -
@@ -45,10 +45,27 @@ def tutorial_1_import():
     logger.info("ended data import")
 
 
+@parsl.bash_app(cache=True)
+def pccd_show():
+    return "processCcd.py DATA --rerun rr-processccd-show --id --show data"
+
+def tutorial_2_show_data():
+    logger.info("asking processCcd.py to show data")
+    pccd_future = pccd_show()
+    pccd_future.result()
+    logger.info("finished asking processCcd.py to show data")
+
+
 parsl.load(config)
 
 tutorial_1_import()
 
+tutorial_2_show_data()
+
+# this will in passing create a rerun directory parented to DATA
+# but won't actually put anything in it apart from the parenting
+# metadata. 
+# processCcd.py DATA --rerun rr-processccd-show --id --show data
 
 
 # 1. subroutine for setting things up
