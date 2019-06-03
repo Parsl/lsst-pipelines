@@ -28,9 +28,12 @@ logger.info("Defining tutorial import subroutine")
 # and the stuff under ci_hsc is symlinked in - maybe it should
 # be hardlinked or copied? so that the ci_hsc stuff can be
 # a transient working directory?
+
+# the tutorial says should use ingestCalibs but they take a short cut
+# and do it the "wrong" way using ln - could replace that?
 @parsl.bash_app(cache=True)
-def import_ci_hsc():
-    return "rm -rf DATA && rm -rf ci_hsc && git clone https://github.com/lsst/ci_hsc && setup -j -r ci_hsc && mkdir DATA && echo lsst.obs.hsc.HscMapper > DATA/_mapper && ingestImages.py DATA $CI_HSC_DIR/raw/*.fits --mode=link && installTransmissionCurves.py DATA && ln -s $CI_HSC_DIR/ci_hsc/CALIB/ DATA/CALIB && mkdir -p DATA/ref_cats && ln -s $CI_HSC_DIR/ci_hsc/ps1_pv3_3pi_20170110 DATA/ref_cats/ps1_pv3_3pi_20170110 "
+def import_ci_hsc(stdout="ingest.default.stdout", stderr="ingest.default.stderr"):
+    return "rm -rf DATA && rm -rf ci_hsc && git clone https://github.com/lsst/ci_hsc && setup -j -r ci_hsc && mkdir DATA && echo lsst.obs.hsc.HscMapper > DATA/_mapper && ingestImages.py DATA $CI_HSC_DIR/raw/*.fits --mode=link && installTransmissionCurves.py DATA && ln -s $CI_HSC_DIR/CALIB/ DATA/CALIB && mkdir -p DATA/ref_cats && ln -s $CI_HSC_DIR/ps1_pv3_3pi_20170110 DATA/ref_cats/ps1_pv3_3pi_20170110 "
 
 # this assumes that we're running in the same
 # python process - using thread local executor -
@@ -45,14 +48,26 @@ def tutorial_1_import():
     logger.info("ended data import")
 
 
+# pccd_show and pccd_process could be refactored,
+# with a bool parameter?
 @parsl.bash_app(cache=True)
 def pccd_show(stdout="pccd_show.default.stdout"):
     return "processCcd.py DATA --rerun rr-processccd-show --id --show data"
 
+@parsl.bash_app(cache=True)
+def pccd_process(stdout="pccd_process.default.stdout"):
+    return "processCcd.py DATA --rerun rr-processccd-show --id"
+
 def tutorial_2_show_data():
     logger.info("asking processCcd.py to show data")
-    pccd_future = pccd_show()
-    pccd_future.result()
+    # These two could run in parallel as a demo of running stuff
+    # in parallel
+    pccd_show_future = pccd_show()
+    pccd_show_future.result()
+
+    pccd_process_future = pccd_process()
+    pccd_process_future.result()
+
     logger.info("finished asking processCcd.py to show data")
 
 
