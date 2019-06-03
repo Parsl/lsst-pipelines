@@ -22,7 +22,7 @@ logger.info("Defining tutorial import subroutine")
 # a transient working directory?
 @parsl.bash_app
 def import_ci_hsc():
-    return "git clone https://github.com/lsst/ci_hsc && installTransmissionCurves.py DATA && ln -s ci_hsc/CALIB/ DATA/CALIB && mkdir -p DATA/ref_cats && ln -s ci_hsc/ps1_pv3_3pi_20170110 DATA/ref_cats/ps1_pv3_3pi_20170110 "
+    return "git clone https://github.com/lsst/ci_hsc && installTransmissionCurves.py DATA && ln -s $(pwd)/ci_hsc/CALIB/ DATA/CALIB && mkdir -p DATA/ref_cats && ln -s $(pwd)/ci_hsc/ps1_pv3_3pi_20170110 DATA/ref_cats/ps1_pv3_3pi_20170110 "
 
 # this assumes that we're running in the same
 # python process - using thread local executor -
