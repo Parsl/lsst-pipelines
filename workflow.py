@@ -46,7 +46,7 @@ def tutorial_1_import():
 
 
 @parsl.bash_app(cache=True)
-def pccd_show():
+def pccd_show(stdout="pccd_show.default.stdout"):
     return "processCcd.py DATA --rerun rr-processccd-show --id --show data"
 
 def tutorial_2_show_data():
