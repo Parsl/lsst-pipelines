@@ -5,6 +5,10 @@
 
 import logging
 import parsl
+import parsl.utils
+
+from parsl.configs.local_threads import config
+config.checkpoint_mode = 'task_exit'
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +17,10 @@ parsl.set_stream_logger(__name__)
 
 logger.info("Logging should be initialised now")
 
+logger.info("Getting checkpoint files")
+config.checkpoint_files = parsl.utils.get_all_checkpoints()
+logger.info("Checkpoint files: {}".format(config.checkpoint_files))
+
 logger.info("Defining tutorial import subroutine")
 
 # the data files created in this app need to be persistent
@@ -20,9 +28,9 @@ logger.info("Defining tutorial import subroutine")
 # and the stuff under ci_hsc is symlinked in - maybe it should
 # be hardlinked or copied? so that the ci_hsc stuff can be
 # a transient working directory?
-@parsl.bash_app
+@parsl.bash_app(cache=True)
 def import_ci_hsc():
-    return "git clone https://github.com/lsst/ci_hsc && installTransmissionCurves.py DATA && ln -s $(pwd)/ci_hsc/CALIB/ DATA/CALIB && mkdir -p DATA/ref_cats && ln -s $(pwd)/ci_hsc/ps1_pv3_3pi_20170110 DATA/ref_cats/ps1_pv3_3pi_20170110 "
+    return "rm -rf DATA && rm -rf ci_hsc && git clone https://github.com/lsst/ci_hsc && installTransmissionCurves.py DATA && ln -s $(pwd)/ci_hsc/CALIB/ DATA/CALIB && mkdir -p DATA/ref_cats && ln -s $(pwd)/ci_hsc/ps1_pv3_3pi_20170110 DATA/ref_cats/ps1_pv3_3pi_20170110 "
 
 # this assumes that we're running in the same
 # python process - using thread local executor -
@@ -37,7 +45,7 @@ def tutorial_1_import():
     logger.info("ended data import")
 
 
-parsl.load()
+parsl.load(config)
 
 tutorial_1_import()
 
