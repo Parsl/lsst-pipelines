@@ -144,7 +144,7 @@ def tutorial_4_coadd():
         futures.append(tutorial_4_apps(global_repo, filter))
 
     for future in futures:
-        logger.info("waiting for a future")
+        logger.info("waiting for a future from tutorial_4_apps")
         future.result()
         
 
