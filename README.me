@@ -14,6 +14,10 @@ curl -L -O https://github.com/git-lfs/git-lfs/releases/download/v2.7.2/git-lfs-l
 tar vxzvf git-lfs-linux-amd64-v2.7.2.tar.gz
 export PATH=$(pwd):$PATH
 
+Inside the container, install parsl into your home directory.
+See ./cori-build-parsl-inside-lsst-singularity.sh
+
+
 Getting the environment set up each time:
 
 on cori:
@@ -40,40 +44,6 @@ setup lsst_distrib
 
 
 
-======
-
-session 2:
-
-install parsl on cori in conda env.
-
-but now what I actually want is that accessible inside parsl - so I can potentially do python lsst
-stuff inside the main workflow script without contortions. I know the other approach, with per-job
-singularity, works to the extent that it does - that's been validated in the desc imsim run.
-
-[WRONG TRACK B]:
-if we activate the lsst packging by saying: 
-sh-4.2$ source /opt/lsst/software/stack/loadLSST.bash
-
-inside a singularity container, we get conda, and can now:
-
-(lsst-scipipe-fcd27eb) sh-4.2$ conda activate parsl-pipeplay
-
-but we get:
-
-(parsl-pipeplay) sh-4.2$ python
-Python 3.7.3 (default, Mar 27 2019, 22:11:17) 
-[GCC 7.3.0] :: Anaconda, Inc. on linux
-Type "help", "copyright", "credits" or "license" for more information.
-Could not open PYTHONSTARTUP
-FileNotFoundError: [Errno 2] No such file or directory: '/etc/pythonstart'
->>> 
-
-so maybe I should build entirely within the singularity container rather than sharing
-the conda env between the two?
-[END WRONG TRACK B]
-
-[WRONG TRACK C]
-t at's easy enough to rerun...
 sh-4.2$ ./cori-build-parsl-inside-lsst-singularity.sh
 [...]
 
