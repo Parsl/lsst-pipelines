@@ -14,8 +14,14 @@ curl -L -O https://github.com/git-lfs/git-lfs/releases/download/v2.7.2/git-lfs-l
 tar vxzvf git-lfs-linux-amd64-v2.7.2.tar.gz
 export PATH=$(pwd):$PATH
 
-Inside the container, install parsl into your home directory.
-See ./cori-build-parsl-inside-lsst-singularity.sh
+Inside the container, install parsl into your home directory rather
+than in a conda env (because there is already a read only
+conda env in use for the LSST code):
+
+git checkout ***parsl***
+cd parsl/
+pip install --user .
+
 
 
 Getting the environment set up each time:
@@ -43,24 +49,8 @@ setup lsst_apps
 setup lsst_distrib
 
 
-
-sh-4.2$ ./cori-build-parsl-inside-lsst-singularity.sh
+======
 [...]
-
-except is the lsst stuff in a conda environment already? not sure...
-that's in a miniconda...
-
-
-so maybe that's going to break this approach for me...
-in which case I can build a new container with parsl in it too?
-
-or install parsl in --user mode which is ick because it will
-conflict with cori regular runs, but hey it'll do for experimenting.
-
-
-[END WRONG TRACK C]
-
-$ pip install --user .[monitoring]
 
 
 also unset $PYTHONSTARTUP
