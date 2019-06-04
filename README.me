@@ -1,8 +1,28 @@
+Software prereqs:
+
+cori account
+shifter (installed on cori already)
+
+This is likely to work on theta+singularity (as the imsim workflow
+uses basically the same container between cori and theta).
+
+Install git-lfs https://git-lfs.github.com/ for large file
+support in the ci_hsc sample repository.
+
+mkdir git-lfs && cf git-fls
+curl -L -O https://github.com/git-lfs/git-lfs/releases/download/v2.7.2/git-lfs-linux-amd64-v2.7.2.tar.gz
+tar vxzvf git-lfs-linux-amd64-v2.7.2.tar.gz
+export PATH=$(pwd):$PATH
+
+Getting the environment set up each time:
+
 on cori:
 
 shifter --image=avillarreal/alcf_run2.0i:production201903
 
-then follow the ALCF.../docker_run.sh commands to get lsst stack in environment (as well as imsim extra):
+Then inside the container, run these commands which will set up both
+LSST and imsim (the latter being not really necessary, but it's how
+the other users of this container do things)
 
 cd /DC2
 source /opt/lsst/software/stack/loadLSST.bash
@@ -18,100 +38,7 @@ setup pipe_tasks
 setup lsst_apps
 setup lsst_distrib
 
-that latter gives us "pipetask"
 
-install git-lsc (so that tutorial data files work - see sidetrack A below for what happens if not.
- - insert [installing git-lsc] below here.
-
-following some getting started tutorial here:
-https://pipelines.lsst.io/getting-started/data-setup.html
-
-[sidetrack A]
-running command: 
- ingestImages.py DATA $CI_HSC_DIR/raw/*.fits --mode=link
-from the tutorial, 
-I get lots of this:
-  Error reading data buffer from file:
-  /global/u1/b/bxc/pipeplay/ci_hsc/raw/HSCA90334738.fits
-  ffopen could not interpret primary array header of file: 
-  /global/u1/b/bxc/pipeplay/ci_hsc/raw/HSCA90334738.fits
-'
-
-... and that's because its a gitlfs file and I didn't have gitlfs set up
-... so its a gitlfs reference, not a fits file itself...
-
-[end sidetrack A]
-
-[installing gitlfs]
-So sidetrack into looking for gitlfs installation...
-
-https://git-lfs.github.com/
-
-
-curl -L -O https://github.com/git-lfs/git-lfs/releases/download/v2.7.2/git-lfs-linux-amd64-v2.7.2.tar.gz
-
-tar vxzvf git-lfs-linux-amd64-v2.7.2.tar.gz  # extracts an executable called git-lfs, not a directory
-
-export PATH=$(pwd):$PATH
-
-"git lfs" will now give help
-
-now checkout ci_hsc and continue above
- - the checkout will do downloads like this:
-
-git clone https://github.com/lsst/ci_hsc
-Cloning into 'ci_hsc'...
-remote: Enumerating objects: 888, done.
-remote: Counting objects: 100% (888/888), done.
-remote: Compressing objects: 100% (880/880), done.
-remote: Total 2554 (delta 14), reused 869 (delta 7), pack-reused 1666
-Receiving objects: 100% (2554/2554), 599.98 KiB | 0 bytes/s, done.
-Resolving deltas: 100% (577/577), done.
-Downloading CALIB/BIAS/2013-11-03/NONE/BIAS-2013-11-03-000.fits (34 MB)
-Downloading CALIB/BIAS/2013-11-03/NONE/BIAS-2013-11-03-001.fits (34 MB)
-...
-
-some notes here: https://pipelines.lsst.io/install/git-lfs.html
-on configuring it once it is installed
-that I didn't need - I think it's just for if you are adding your own data?
-[end installing gitlfs] 
-
-back to tutorial...
-
-installTransmissionCurves.py DATA
-
-ln -s $CI_HSC_DIR/CALIB/ DATA/CALIB
-mkdir -p DATA/ref_cats
-ln -s $CI_HSC_DIR/ps1_pv3_3pi_20170110 DATA/ref_cats/ps1_pv3_3pi_20170110
-
-part 2:
-processCcd.py DATA --rerun processCcdOutputs --id --show data
-
-that runs for a few minutes, gives a load of output like this:
-
-id dataRef.dataId = {'field': 'STRIPE82L', 'dateObs': '2013-11-02', 'pointing': 671, 'filter': 'HSC-I', 'visit': 904014, 'ccd': 1, 'taiObs': '2013-11-02', 'expTime': 30.0}
-
-
-processCcd.py DATA --rerun processCcdOutputs --id filter=HSC-I --show data
-
-which does the same but picks out ones with filter=HSC-I in them (which is about 16)
-
-processCcd.py DATA --rerun processCcdOutputs --id
-
-how long is this going to take?
-
-several minutes per file by the looks of it...
-
-so leave this to churn - i could avoid, but I'd like to at least check the tutorial environment
-is working.
-
-an hour maybe?
-
-ok that ran. let's have a think about the APIs now - I think basically parsl needs to be able to
-run the various pipedriver stages. But this could happen as separate command lines to begin
-with? As a basic beginning, make it run the tutorial I just did above?
-
-Then have a think about how butler is going to do things here...
 
 ======
 
