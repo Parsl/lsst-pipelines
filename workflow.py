@@ -5,10 +5,12 @@
 
 import logging
 import parsl
+import parsl.config
 import parsl.utils
+import parsl.executors
 
-from parsl.configs.local_threads import config
-config.checkpoint_mode = 'task_exit'
+from parsl.monitoring.monitoring import MonitoringHub
+from parsl.addresses import address_by_hostname
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +18,22 @@ parsl.set_stream_logger()
 parsl.set_stream_logger(__name__)
 
 logger.info("Logging should be initialised now")
+
+config = parsl.config.Config(
+    executors=[parsl.executors.ThreadPoolExecutor(label="management", max_threads=20),
+               parsl.executors.ThreadPoolExecutor(label="heavy", max_threads=3),
+              ],
+
+    # monitoring config from https://parsl.readthedocs.io/en/latest/userguide/monitoring.html
+    # modified to add hub_port - see https://github.com/Parsl/parsl/issues/1010
+    monitoring=MonitoringHub(
+        hub_address=address_by_hostname(), logging_level=logging.INFO, resource_monitoring_interval=10,
+        hub_port=30733
+    )
+
+   )
+
+config.checkpoint_mode = 'task_exit'
 
 global_repo="DATA_GR"
 
@@ -31,17 +49,17 @@ logger.info("Defining tutorial import subroutine")
 # be hardlinked or copied? so that the ci_hsc stuff can be
 # a transient working directory?
 
-@parsl.bash_app(cache=True)
+@parsl.bash_app(cache=True, executors=["heavy"])
 def create_empty_repo(repo: str):
     return "rm -rf {r} && mkdir {r} && echo lsst.obs.hsc.HscMapper > {r}/_mapper".format(r=repo)
 
-@parsl.bash_app(cache=True)
+@parsl.bash_app(cache=True, executors=["heavy"])
 def install_transmission_curves(repo: str):
     return "installTransmissionCurves.py {r}".format(r=repo)
 
 # the tutorial says should use ingestCalibs but they take a short cut
 # and do it the "wrong" way using ln - could replace that?
-@parsl.bash_app(cache=True)
+@parsl.bash_app(cache=True, executors=["heavy"])
 def import_ci_hsc(repo: str, stdout="ingest.default.stdout", stderr="ingest.default.stderr"):
     return "rm -rf ci_hsc && git clone https://github.com/lsst/ci_hsc && setup -j -r ci_hsc && ingestImages.py {r} $CI_HSC_DIR/raw/*.fits --mode=link && ln -s $CI_HSC_DIR/CALIB/ {r}/CALIB && mkdir -p {r}/ref_cats && ln -s $CI_HSC_DIR/ps1_pv3_3pi_20170110 {r}/ref_cats/ps1_pv3_3pi_20170110 ".format(r=repo)
 
@@ -65,11 +83,11 @@ def tutorial_1_import():
 
 # pccd_show and pccd_process could be refactored,
 # with a bool parameter?
-@parsl.bash_app(cache=True)
+@parsl.bash_app(cache=True, executors=["heavy"])
 def pccd_show(repo: str, stdout="pccd_show.default.stdout"):
     return "processCcd.py {r} --rerun rr-processccd-show --id --show data".format(r=repo)
 
-@parsl.bash_app(cache=True)
+@parsl.bash_app(cache=True, executors=["heavy"])
 def pccd_process(repo: str, stdout="pccd_process.default.stdout"):
     return "processCcd.py {r} --rerun rr-processccd-show --id".format(r=repo)
 
@@ -92,12 +110,55 @@ def tutorial_2_show_data():
 
     logger.info("finished processCcd tasks")
 
+@parsl.bash_app(cache=True, executors=["heavy"])
+def makeDiscreteSkyMap(repo: str):
+    return "makeDiscreteSkyMap.py {r} --id --rerun rr-processccd-show:wfdev2 --config skyMap.projection=TAN".format(r=repo)
+
+
+@parsl.bash_app(cache=True, executors=["heavy"])
+def makeCoaddTempExp(repo: str, filter: str):
+    return "makeCoaddTempExp.py {r} --rerun wfdev2 --selectId filter={f} --id filter={f} tract=0 patch=0,0^0,1^0,2^1,0^1,1^1,2^2,0^2,1^2,2 --config doApplyUberCal=False doApplySkyCorr=False".format(r=repo, f=filter)
+
+@parsl.bash_app(cache=True, executors=["heavy"])
+def assembleCoadd(repo: str, filter: str): 
+    return "assembleCoadd.py {r} --rerun wfdev2 --selectId filter={f} --id filter={f} tract=0 patch=0,0^0,1^0,2^1,0^1,1^1,2^2,0^2,1^2,2".format(r=repo, f=filter)
+
+@parsl.python_app(cache=True, executors=["management"])
+def tutorial_4_apps(global_repo: str, filter: str):
+    f1 = makeCoaddTempExp(global_repo, filter)
+    f1.result()
+    f2 = assembleCoadd(global_repo, filter)
+    f2.result()
+
+def tutorial_4_coadd():
+    logger.info("assembling processed CCD images into sky map")
+
+    f1 = makeDiscreteSkyMap(global_repo)
+    f1.result()
+
+    # Assumption: I think HSC-R and HSC-I processing is entirely separate so the two
+    # pieces can run in parallel?
+    futures = []
+    for filter in ["HSC-R", "HSC-I"]:
+        logger.info("launching apps for filter {}".format(filter))
+        futures.append(tutorial_4_apps(global_repo, filter))
+
+    for future in futures:
+        logger.info("waiting for a future")
+        future.result()
+        
+
+    # TODO: now wait for these to finish in appropriate pattern...
+    logger.info("finished assembling processed CCD images into sky map")
 
 parsl.load(config)
 
 tutorial_1_import()
 
 tutorial_2_show_data()
+
+tutorial_4_coadd()
+
 
 # this will in passing create a rerun directory parented to DATA
 # but won't actually put anything in it apart from the parenting
