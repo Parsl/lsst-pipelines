@@ -9,30 +9,36 @@ uses basically the same container between cori and theta).
 Install git-lfs https://git-lfs.github.com/ for large file
 support in the ci_hsc sample repository.
 
+```
 mkdir git-lfs && cf git-fls
 curl -L -O https://github.com/git-lfs/git-lfs/releases/download/v2.7.2/git-lfs-linux-amd64-v2.7.2.tar.gz
 tar vxzvf git-lfs-linux-amd64-v2.7.2.tar.gz
+```
 
 Inside the container, install parsl into your home directory rather
 than in a conda env (because there is already a read only
 conda env in use for the LSST code):
 
+```
 git checkout ***parsl***
 cd parsl/
 pip install --user .
-
+```
 
 
 # Getting the environment set up each time:
 
 on cori:
 
+```
 shifter --image=avillarreal/alcf_run2.0i:production201903
+```
 
 Then inside the container, run these commands which will set up both
 LSST and imsim (the latter being not really necessary, but it's how
 the other users of this container do things)
 
+```
 export PATH=../wherever/git-lfs:$PATH
 cd /DC2
 source /opt/lsst/software/stack/loadLSST.bash
@@ -49,6 +55,7 @@ setup lsst_apps
 setup lsst_distrib
 
 unset PYTHONSTARTUP
+```
 
 (- that's set in the container (and maybe on cori) when i'm running in
 a shell but PYTHONSTARTUP=/etc/pythonstart points to a script that
