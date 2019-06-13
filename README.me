@@ -58,7 +58,15 @@ also unset $PYTHONSTARTUP
 a shell but PYTHONSTARTUP=/etc/pythonstart points to a script that
 doesn't exist in the container.
 unsetting it looks harmless - it seems to be to get command line history
-restored.
+restored in interactive python.
+
+
+
+
+
+
+
+
 
 so now I have parsl installed I can start putting the entire tutorial
 sequence that I ran earlier on into a parsl workflow - as a step by
@@ -217,37 +225,21 @@ are there race conditions there (for example in initialising the B repo?)
 SECTION: review of workflow source code layout
 
 
-target audience: people who know at a technical level about the lsst stack and
-people who know at a technical level about the parsl stack - without assuming
-that people know about both.
-
-review implementation - especially note parallelism is done based on assumed
-behaviour by me - as the tutorial is entirely serial
-
 Note that explicit construction of the dag to specify parallelism
 gives some (essential) complexity that isn't present in the tutorial's
 "list of commands to type"
 
 SECTION: The demonstration application
 
-The demonstration applicaiton is the pipeline tutorial which processes some images
-using these pipeline tasks: (processCCD, etc-TODO) and generates a final output
-of "...TODO"
-
 Example output could be DATA_GR/rerun/manual1/deepCoadd/HSC-I/0/1,1.fits which is the
 middle tile of the co-added skymap stage and it looks like some stars to put in 
 doc?
 
-
-
 SECTION: containerisation
 shifter. Use pre-existing LSST stack container as used in imsim work.
 
-
 SECTION: parsl apps called from within parsl apps
 A technique we've talked about but I haven't seen used before.
-
-
 
 seem to have deadlocked under heavy load - perhaps insufficient threads on the local
 thread worker? perhaps should have one for managemnt with many threads and one for
