@@ -1,4 +1,4 @@
-Software prereqs:
+# Software prereqs:
 
 cori account
 shifter (installed on cori already)
@@ -24,7 +24,7 @@ pip install --user .
 
 
 
-Getting the environment set up each time:
+# Getting the environment set up each time:
 
 on cori:
 
@@ -48,24 +48,31 @@ setup pipe_tasks
 setup lsst_apps
 setup lsst_distrib
 
+unset PYTHONSTARTUP
 
-======
-[...]
-
-
-also unset $PYTHONSTARTUP
-- that's set in the container (and maybe on cori) when i'm running in
+(- that's set in the container (and maybe on cori) when i'm running in
 a shell but PYTHONSTARTUP=/etc/pythonstart points to a script that
 doesn't exist in the container.
 unsetting it looks harmless - it seems to be to get command line history
-restored in interactive python.
+restored in interactive python.)
 
+# Run the tutorial
 
+Clear up after last run: (until I've figured out restart semantics properly):
 
+```
+$ rm -rf DATA/ ci_hsc/ *.stdout runinfo/* *.stderr  DATA*/
+```
 
+Run the workflow:
 
+```
+python workflow.py
+```
 
+As of now, the workflow takes about 1.5 hours to run.
 
+# Assorted notes to self
 
 
 so now I have parsl installed I can start putting the entire tutorial
