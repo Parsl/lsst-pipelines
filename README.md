@@ -12,7 +12,6 @@ support in the ci_hsc sample repository.
 mkdir git-lfs && cf git-fls
 curl -L -O https://github.com/git-lfs/git-lfs/releases/download/v2.7.2/git-lfs-linux-amd64-v2.7.2.tar.gz
 tar vxzvf git-lfs-linux-amd64-v2.7.2.tar.gz
-export PATH=$(pwd):$PATH
 
 Inside the container, install parsl into your home directory rather
 than in a conda env (because there is already a read only
@@ -34,6 +33,7 @@ Then inside the container, run these commands which will set up both
 LSST and imsim (the latter being not really necessary, but it's how
 the other users of this container do things)
 
+export PATH=../wherever/git-lfs:$PATH
 cd /DC2
 source /opt/lsst/software/stack/loadLSST.bash
 setup lsst_sims
