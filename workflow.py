@@ -74,6 +74,9 @@ class RepoInfo:
 
         return RepoInfo(self.repo_base, identifier)
 
+    def __repr__(self):
+        return f"RepoInfo({self.repo_base}, {self.rerun})"
+
 
 logger.info("Defining tutorial import subroutine")
 
