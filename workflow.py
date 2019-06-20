@@ -7,12 +7,6 @@ import logging
 import random
 
 import parsl
-import parsl.config
-import parsl.utils
-import parsl.executors
-
-from parsl.monitoring.monitoring import MonitoringHub
-from parsl.addresses import address_by_hostname
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +14,21 @@ parsl.set_stream_logger()
 parsl.set_stream_logger(__name__)
 
 logger.info("Logging should be initialised now")
+
+logger.info("Importing parsl modules")
+
+import parsl.config
+import parsl.utils
+import parsl.executors
+
+from parsl.monitoring.monitoring import MonitoringHub
+from parsl.addresses import address_by_hostname
+
+logger.info("Importing lsst modules")
+
+from lsst.pipe.tasks.processCcd import ProcessCcdTask
+
+logger.info("Done with imports")
 
 config = parsl.config.Config(
     executors=[parsl.executors.ThreadPoolExecutor(label="management", max_threads=20),
@@ -144,9 +153,18 @@ def tutorial_1_import(parent_repo, checkpoint_hash=parsl.AUTO_LOGNAME):
 def pccd_show(repo: RepoInfo, stdout="pccd_show.default.stdout"):
     return "processCcd.py {r} --id --show data".format(r=repo.cli())
 
+# so can I split this into something parallelised - with
+# a processCcd bsah app for each ID, and restartable parallelism
+# (along with pccd_show) in the same repo
+
 @parsl.bash_app(cache=True, executors=["heavy"])
-def pccd_process(repo: RepoInfo, stdout="pccd_process.default.stdout"):
-    return "processCcd.py {r} --id".format(r=repo.cli())
+def pccd_process_by_id(repo: RepoInfo, id: str, stdout=parsl.AUTO_LOGNAME):
+    return "processCcd.py {r} --id {id}".format(r=repo.cli(), id=id)
+
+@parsl.python_app(executors=["management"])
+def pccd_process(repo: RepoInfo):
+    f = pccd_process_by_id(repo, "")
+    f.result()
 
 @parsl.python_app(cache=True, executors=["management"])
 def tutorial_2_show_data(previous_repo, checkpoint_hash=parsl.AUTO_LOGNAME):
