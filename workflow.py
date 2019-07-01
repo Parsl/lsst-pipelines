@@ -39,14 +39,14 @@ config = parsl.config.Config(
 # so monitoring off at the moment
     # monitoring config from https://parsl.readthedocs.io/en/latest/userguide/monitoring.html
     # modified to add hub_port - see https://github.com/Parsl/parsl/issues/1010
-#    monitoring=MonitoringHub(
-#        hub_address=address_by_hostname(), logging_level=logging.INFO, resource_monitoring_interval=10,
-#        hub_port=30733
-#    )
+    monitoring=MonitoringHub(
+        hub_address=address_by_hostname(), logging_level=logging.INFO, resource_monitoring_interval=10,
+        hub_port=30733
+    )
 
    )
 
-config.checkpoint_mode = 'task_exit'
+# config.checkpoint_mode = 'task_exit'
 
 REPO_BASE="REPO"
 
