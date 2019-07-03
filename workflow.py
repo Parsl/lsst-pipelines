@@ -66,6 +66,12 @@ class RepoInfo:
             return self.repo_base
         else:
             return "{} --rerun {}".format(self.repo_base, self.rerun)
+
+    def cli_as_list(self):
+        if self.rerun is None:
+            return [self.repo_base]
+        else:
+            return [self.repo_base, "--rerun", self.rerun]
  
     # create a new rerun, with arbitrary identifier, and returns
     # a new RepoInfo for that rerun. This is the only place that
@@ -132,14 +138,14 @@ def tutorial_1_import(parent_repo, checkpoint_hash=parsl.AUTO_LOGNAME):
     if parent_repo.rerun is not None:
         raise ValueError("Cannot import into a non-root repo")
 
-    empty_repo_future = create_empty_repo(parent_repo.repo_base)
-    empty_repo_future.result()
+    #QUICK empty_repo_future = create_empty_repo(parent_repo.repo_base)
+    #QUICK empty_repo_future.result()
 
-    import_future = import_ci_hsc(parent_repo.repo_base, checkpoint_hash=parsl.AUTO_LOGNAME)
-    transmission_curve_future = install_transmission_curves(parent_repo.repo_base)
+    #QUICK import_future = import_ci_hsc(parent_repo.repo_base, checkpoint_hash=parsl.AUTO_LOGNAME)
+    #QUICK transmission_curve_future = install_transmission_curves(parent_repo.repo_base)
 
-    transmission_curve_future.result()
-    import_future.result()
+    #QUICK transmission_curve_future.result()
+    #QUICK import_future.result()
 
     tutorial_1_repo = parent_repo.new_rerun(checkpoint_hash)
 
@@ -157,13 +163,40 @@ def pccd_show(repo: RepoInfo, stdout="pccd_show.default.stdout"):
 # a processCcd bsah app for each ID, and restartable parallelism
 # (along with pccd_show) in the same repo
 
-@parsl.bash_app(cache=True, executors=["heavy"])
+
+# this is a re-implementation of the below bash_app invocation of processCcd,
+# attempting to run it inside the python process rather than forking, as a
+# step towards more use of the python pipeline tasks within python.
+# note that we lose the ability to redirect stdout by moving to in-python
+# code
+@parsl.python_app
 def pccd_process_by_id(repo: RepoInfo, id: str, stdout=parsl.AUTO_LOGNAME):
-    return "processCcd.py {r} --id {id}".format(r=repo.cli(), id=id)
+
+    argslist = repo.cli_as_list()
+
+    print("BENC ARGS LIST 1: {}".format(argslist))
+
+    if id:
+        argslist += ["--id", id]
+    else:
+        argslist += ["--id"]
+    print("BENC ARGS LIST 2: {}".format(argslist))
+
+    from lsst.pipe.tasks.processCcd import ProcessCcdTask
+    try:
+        ProcessCcdTask.parseAndRun(args=argslist)
+    except SystemExit as e:
+        raise ValueError("caught a SystemExit from ProcessCcdTask - turning into a more normal looking exception, with code {}".format(e.code))
+
+#
+# @parsl.bash_app(cache=True, executors=["heavy"])
+# def pccd_process_by_id(repo: RepoInfo, id: str, stdout=parsl.AUTO_LOGNAME):
+#    return "processCcd.py {r} --id {id}".format(r=repo.cli(), id=id)
+#
 
 @parsl.python_app(executors=["management"])
 def pccd_process(repo: RepoInfo):
-    f = pccd_process_by_id(repo, "")
+    f = pccd_process_by_id(repo, None)
     f.result()
 
 @parsl.python_app(cache=True, executors=["management"])
