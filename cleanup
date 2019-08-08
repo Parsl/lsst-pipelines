@@ -1,0 +1,2 @@
+#!/bin/bash -ex
+rm -rf DATA/ ci_hsc/ *.stdout runinfo/* *.stderr  DATA*/

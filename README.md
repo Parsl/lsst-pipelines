@@ -69,7 +69,7 @@ unset PYTHONSTARTUP
 Clear up after last run (unless you're expecting to restart from checkpoints):
 
 ```
-$ rm -rf DATA/ ci_hsc/ *.stdout runinfo/* *.stderr  DATA*/
+$ ./cleanup
 ```
 
 Run the tutorial workflow:
