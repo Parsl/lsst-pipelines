@@ -83,18 +83,6 @@ The workflow takes about 1.5 hours to run.
 
 # Assorted notes to self
 
-
-so now I have parsl installed I can start putting the entire tutorial
-sequence that I ran earlier on into a parsl workflow - as a step by
-step workflow with no parsl-mediated dependencies to begin with...
-
-the data flow is going to happen inside butler rather than parsl
-mediated data flow. not sure what the end result of that should be?
-
-
-run all the `setup` command steps outside of the workflow (although these
-would need to be replicated internally if running on eg htex)
-
 ##
 part 4 of tutorial:
 
