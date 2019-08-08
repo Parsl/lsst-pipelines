@@ -1,7 +1,6 @@
 
-# this attempts to run the tutorial at https://pipelines.lsst.io/getting-started/data-setup.html
-# assume various setup commands have been run
-# and that git-lfs has been installed
+# this attempts to run part of the tutorial at
+#   https://pipelines.lsst.io/getting-started/data-setup.html
 
 import logging
 import random
@@ -12,8 +11,6 @@ logger = logging.getLogger(__name__)
 
 parsl.set_stream_logger()
 parsl.set_stream_logger(__name__)
-
-logger.info("Logging should be initialised now")
 
 logger.info("Importing parsl modules")
 
@@ -26,23 +23,27 @@ from parsl.addresses import address_by_hostname
 
 logger.info("Importing lsst modules")
 
-from lsst.pipe.tasks.processCcd import ProcessCcdTask
-
 logger.info("Done with imports")
 
-# TODO: proper boolean switch here to switch between
+# TODO: proper boolean switch here to switch between checkpointing and
+# monitoring, as they do not work together at the moment.
+#  - see https://github.com/Parsl/parsl/issues/1014
+
 
 config = parsl.config.Config(
-    executors=[parsl.executors.ThreadPoolExecutor(label="management", max_threads=20),
-               parsl.executors.ThreadPoolExecutor(label="heavy", max_threads=3),
-              ],
+    executors=[parsl.executors.ThreadPoolExecutor(label="management",
+                                                  max_threads=20),
+               parsl.executors.ThreadPoolExecutor(label="heavy",
+                                                  max_threads=3),
+               ],
 
-# monitoring vs checkpointing doesn't work - see https://github.com/Parsl/parsl/issues/1014
-# so monitoring off at the moment
-    # monitoring config from https://parsl.readthedocs.io/en/latest/userguide/monitoring.html
+    # monitoring config from
+    # https://parsl.readthedocs.io/en/latest/userguide/monitoring.html
     # modified to add hub_port - see https://github.com/Parsl/parsl/issues/1010
     monitoring=MonitoringHub(
-        hub_address=address_by_hostname(), logging_level=logging.INFO, resource_monitoring_interval=10,
+        hub_address=address_by_hostname(),
+        logging_level=logging.INFO,
+        resource_monitoring_interval=10,
         hub_port=30733
     )
 
@@ -50,11 +51,12 @@ config = parsl.config.Config(
 
 # config.checkpoint_mode = 'task_exit'
 
-REPO_BASE="REPO"
+REPO_BASE = "REPO"
 
 logger.info("Getting checkpoint files")
 config.checkpoint_files = parsl.utils.get_all_checkpoints()
 logger.info("Checkpoint files: {}".format(config.checkpoint_files))
+
 
 class RepoInfo:
     def __init__(self, repo_base, rerun=None):
@@ -74,7 +76,7 @@ class RepoInfo:
             return [self.repo_base]
         else:
             return [self.repo_base, "--rerun", self.rerun]
- 
+
     # create a new rerun, with arbitrary identifier, and returns
     # a new RepoInfo for that rerun. This is the only place that
     # --rerun input:output syntax gets used -- which is a bit
@@ -82,8 +84,8 @@ class RepoInfo:
     # where the creation of new reruns is tangled with performing
     # a new command.
     def new_rerun(self, descr=""):
-        identifier = "parsl-{}-{}".format(descr, random.randint(0,2**32))
-        logger.debug("Creating new rerun, with identifier {}".format(identifier))
+        identifier = "parsl-{}-{}".format(descr, random.randint(0, 2**32))
+        logger.debug("Creating new rerun with id {}".format(identifier))
 
         future = create_rerun(self.repo_base, self.rerun, identifier)
         future.result()
@@ -97,6 +99,7 @@ class RepoInfo:
 
 logger.info("Defining tutorial import subroutine")
 
+
 @parsl.bash_app
 def create_rerun(base, old, new):
     # this could be anything which is going to do nothing except make
@@ -107,7 +110,7 @@ def create_rerun(base, old, new):
         rr = "{new}".format(new=new)
     else:
         rr = "{old}:{new}".format(old=old, new=new)
-    return "processCcd.py {base} --rerun {rr} --id --show data".format(base=base, rr=rr)
+    return ("processCcd.py {base} --rerun {rr} --id --show data").format(base=base, rr=rr)
 
 # the data files created in this app need to be persistent
 # the stuff under DATA/ is a permanent data store
@@ -115,9 +118,13 @@ def create_rerun(base, old, new):
 # be hardlinked or copied? so that the ci_hsc stuff can be
 # a transient working directory?
 
+
 @parsl.bash_app(cache=True, executors=["heavy"])
 def create_empty_repo(repo: str):
-    return "rm -rf {r} && mkdir {r} && echo lsst.obs.hsc.HscMapper > {r}/_mapper".format(r=repo)
+    return ("rm -rf {r} && "
+            "mkdir {r} && "
+            "echo lsst.obs.hsc.HscMapper > {r}/_mapper").format(r=repo)
+
 
 @parsl.bash_app(cache=True, executors=["heavy"])
 def install_transmission_curves(repo: str):
@@ -126,8 +133,15 @@ def install_transmission_curves(repo: str):
 # the tutorial says should use ingestCalibs but they take a short cut
 # and do it the "wrong" way using ln - could replace that?
 @parsl.bash_app(cache=True, executors=["heavy"])
-def import_ci_hsc(repo: str, stdout="ingest.default.stdout", stderr="ingest.default.stderr"):
-    return "rm -rf ci_hsc && git clone https://github.com/lsst/ci_hsc && setup -j -r ci_hsc && ingestImages.py {r} $CI_HSC_DIR/raw/*.fits --mode=link && ln -s $CI_HSC_DIR/CALIB/ {r}/CALIB && mkdir -p {r}/ref_cats && ln -s $CI_HSC_DIR/ps1_pv3_3pi_20170110 {r}/ref_cats/ps1_pv3_3pi_20170110 ".format(r=repo)
+def import_ci_hsc(repo: str, stdout="ingest.default.stdout",
+                  stderr="ingest.default.stderr"):
+    return ("rm -rf ci_hsc && "
+            "git clone https://github.com/lsst/ci_hsc && "
+            "setup -j -r ci_hsc && "
+            "ingestImages.py {r} $CI_HSC_DIR/raw/*.fits --mode=link && "
+            "ln -s $CI_HSC_DIR/CALIB/ {r}/CALIB && "
+            "mkdir -p {r}/ref_cats && "
+            "ln -s $CI_HSC_DIR/ps1_pv3_3pi_20170110 {r}/ref_cats/ps1_pv3_3pi_20170110 ").format(r=repo)
 
 # this assumes that we're running in the same
 # python process - using thread local executor -
@@ -144,7 +158,8 @@ def tutorial_1_import(parent_repo):
     empty_repo_future.result()
 
     import_future = import_ci_hsc(parent_repo.repo_base)
-    transmission_curve_future = install_transmission_curves(parent_repo.repo_base)
+    transmission_curve_future = \
+        install_transmission_curves(parent_repo.repo_base)
 
     transmission_curve_future.result()
     import_future.result()
@@ -158,7 +173,8 @@ def tutorial_1_import(parent_repo):
 # pccd_show and pccd_process could be refactored,
 # with a bool parameter?
 @parsl.bash_app(cache=True, executors=["heavy"])
-def pccd_show(repo: RepoInfo, stdout="pccd_show.default.stdout", stderr="pccd_show.default.stderr"):
+def pccd_show(repo: RepoInfo, stdout="pccd_show.default.stdout",
+              stderr="pccd_show.default.stderr"):
     return "processCcd.py {r} --id --show data".format(r=repo.cli())
 
 # so can I split this into something parallelised - with
@@ -188,7 +204,7 @@ def py_pccd_process_by_id(repo: RepoInfo, id: str, stdout=parsl.AUTO_LOGNAME):
     try:
         ProcessCcdTask.parseAndRun(args=argslist)
     except SystemExit as e:
-        raise ValueError("caught a SystemExit from ProcessCcdTask - turning into a more normal looking exception, with code {}".format(e.code))
+        raise ValueError("SystemExit {} from ProcessCcdTask".format(e.code))
 
 
 @parsl.bash_app(cache=True, executors=["heavy"])
@@ -207,6 +223,7 @@ def pccd_process_by_id(repo: RepoInfo, id: str, stdout=parsl.AUTO_LOGNAME):
 def pccd_process(repo: RepoInfo):
     f = pccd_process_by_id(repo, None)
     f.result()
+
 
 @parsl.python_app(cache=True, executors=["management"])
 def tutorial_2_show_data(previous_repo):
@@ -233,24 +250,36 @@ def tutorial_2_show_data(previous_repo):
     logger.info("finished processCcd tasks")
     return new_repo
 
+
 @parsl.bash_app(cache=True, executors=["heavy"])
-def makeDiscreteSkyMap(repo: RepoInfo):
-    return "makeDiscreteSkyMap.py {r} --id --config skyMap.projection=TAN".format(r=repo.cli())
+def make_discrete_sky_map(repo: RepoInfo):
+    return ("makeDiscreteSkyMap.py {r} --id "
+            "--config skyMap.projection=TAN").format(r=repo.cli())
 
 
 @parsl.bash_app(cache=True, executors=["heavy"])
-def makeCoaddTempExp(repo: RepoInfo, filter: str):
-    return "makeCoaddTempExp.py {r} --selectId filter={f} --id filter={f} tract=0 patch=0,0^0,1^0,2^1,0^1,1^1,2^2,0^2,1^2,2 --config doApplyUberCal=False doApplySkyCorr=False".format(r=repo.cli(), f=filter)
+def make_coadd_temp_exp(repo: RepoInfo, filter: str):
+    return ("makeCoaddTempExp.py {r} --selectId filter={f} "
+            "--id filter={f} tract=0 "
+            "patch=0,0^0,1^0,2^1,0^1,1^1,2^2,0^2,1^2,2 "
+            "--config doApplyUberCal=False "
+            "doApplySkyCorr=False").format(r=repo.cli(), f=filter)
+
 
 @parsl.bash_app(cache=True, executors=["heavy"])
-def assembleCoadd(repo: RepoInfo, filter: str): 
-    return "assembleCoadd.py {r} --selectId filter={f} --id filter={f} tract=0 patch=0,0^0,1^0,2^1,0^1,1^1,2^2,0^2,1^2,2".format(r=repo.cli(), f=filter)
+def assemble_coadd(repo: RepoInfo, filter: str):
+    return (
+        "assembleCoadd.py {r} --selectId filter={f} "
+        "--id filter={f} tract=0 "
+        "patch=0,0^0,1^0,2^1,0^1,1^1,2^2,0^2,1^2,2").format(r=repo.cli(),
+                                                            f=filter)
+
 
 @parsl.python_app(cache=True, executors=["management"])
 def tutorial_4_apps(repo: str, filter: str):
-    f1 = makeCoaddTempExp(repo, filter)
+    f1 = make_coadd_temp_exp(repo, filter)
     f1.result()
-    f2 = assembleCoadd(repo, filter)
+    f2 = assemble_coadd(repo, filter)
     f2.result()
 
 
@@ -260,24 +289,22 @@ def tutorial_4_coadd(previous_repo):
 
     # new_repo = previous_repo.new_rerun()
     new_repo = previous_repo
-    f1 = makeDiscreteSkyMap(new_repo)
+    f1 = make_discrete_sky_map(new_repo)
     f1.result()
 
-    # Assumption: I think HSC-R and HSC-I processing is entirely separate so the two
-    # pieces can run in parallel?
+    # Assumption: I think HSC-R and HSC-I processing is entirely separate
+    # so the two pieces can run in parallel?
     futures = []
     for filter in ["HSC-R", "HSC-I"]:
-     #   logger.info("launching apps for filter {}".format(filter))
         futures.append(tutorial_4_apps(new_repo, filter))
 
     for future in futures:
-     #   logger.info("waiting for a future from tutorial_4_apps")
         future.result()
-        
 
     # TODO: now wait for these to finish in appropriate pattern...
     # logger.info("finished assembling processed CCD images into sky map")
     return new_repo
+
 
 parsl.load(config)
 
@@ -294,7 +321,7 @@ logger.info("Final t4_repo is: {}".format(t4_repo.result()))
 
 # this will in passing create a rerun directory parented to DATA
 # but won't actually put anything in it apart from the parenting
-# metadata. 
+# metadata.
 # processCcd.py DATA --rerun rr-processccd-show --id --show data
 
 
