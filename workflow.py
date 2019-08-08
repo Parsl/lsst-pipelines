@@ -30,6 +30,8 @@ from lsst.pipe.tasks.processCcd import ProcessCcdTask
 
 logger.info("Done with imports")
 
+# TODO: proper boolean switch here to switch between
+
 config = parsl.config.Config(
     executors=[parsl.executors.ThreadPoolExecutor(label="management", max_threads=20),
                parsl.executors.ThreadPoolExecutor(label="heavy", max_threads=3),
@@ -124,39 +126,39 @@ def install_transmission_curves(repo: str):
 # the tutorial says should use ingestCalibs but they take a short cut
 # and do it the "wrong" way using ln - could replace that?
 @parsl.bash_app(cache=True, executors=["heavy"])
-def import_ci_hsc(repo: str, checkpoint_hash=parsl.AUTO_LOGNAME, stdout="ingest.default.stdout", stderr="ingest.default.stderr"):
+def import_ci_hsc(repo: str, stdout="ingest.default.stdout", stderr="ingest.default.stderr"):
     return "rm -rf ci_hsc && git clone https://github.com/lsst/ci_hsc && setup -j -r ci_hsc && ingestImages.py {r} $CI_HSC_DIR/raw/*.fits --mode=link && ln -s $CI_HSC_DIR/CALIB/ {r}/CALIB && mkdir -p {r}/ref_cats && ln -s $CI_HSC_DIR/ps1_pv3_3pi_20170110 {r}/ref_cats/ps1_pv3_3pi_20170110 ".format(r=repo)
 
 # this assumes that we're running in the same
 # python process - using thread local executor -
 # so that it will have access to globals.
 @parsl.python_app(cache=True, executors=["management"])
-def tutorial_1_import(parent_repo, checkpoint_hash=parsl.AUTO_LOGNAME):
-    # logger.info("starting data import")
+def tutorial_1_import(parent_repo):
+    logger.info("starting data import")
 
     # these setup commands work on directories not repos.
     if parent_repo.rerun is not None:
         raise ValueError("Cannot import into a non-root repo")
 
-    #QUICK empty_repo_future = create_empty_repo(parent_repo.repo_base)
-    #QUICK empty_repo_future.result()
+    empty_repo_future = create_empty_repo(parent_repo.repo_base)
+    empty_repo_future.result()
 
-    #QUICK import_future = import_ci_hsc(parent_repo.repo_base, checkpoint_hash=parsl.AUTO_LOGNAME)
-    #QUICK transmission_curve_future = install_transmission_curves(parent_repo.repo_base)
+    import_future = import_ci_hsc(parent_repo.repo_base)
+    transmission_curve_future = install_transmission_curves(parent_repo.repo_base)
 
-    #QUICK transmission_curve_future.result()
-    #QUICK import_future.result()
+    transmission_curve_future.result()
+    import_future.result()
 
-    tutorial_1_repo = parent_repo.new_rerun(checkpoint_hash)
+    tutorial_1_repo = parent_repo.new_rerun("post-import")
 
-    # logger.info("ended data import")
+    logger.info("ended data import")
 
     return tutorial_1_repo
 
 # pccd_show and pccd_process could be refactored,
 # with a bool parameter?
 @parsl.bash_app(cache=True, executors=["heavy"])
-def pccd_show(repo: RepoInfo, stdout="pccd_show.default.stdout"):
+def pccd_show(repo: RepoInfo, stdout="pccd_show.default.stdout", stderr="pccd_show.default.stderr"):
     return "processCcd.py {r} --id --show data".format(r=repo.cli())
 
 # so can I split this into something parallelised - with
@@ -170,7 +172,7 @@ def pccd_show(repo: RepoInfo, stdout="pccd_show.default.stdout"):
 # note that we lose the ability to redirect stdout by moving to in-python
 # code
 @parsl.python_app
-def pccd_process_by_id(repo: RepoInfo, id: str, stdout=parsl.AUTO_LOGNAME):
+def py_pccd_process_by_id(repo: RepoInfo, id: str, stdout=parsl.AUTO_LOGNAME):
 
     argslist = repo.cli_as_list()
 
@@ -188,11 +190,18 @@ def pccd_process_by_id(repo: RepoInfo, id: str, stdout=parsl.AUTO_LOGNAME):
     except SystemExit as e:
         raise ValueError("caught a SystemExit from ProcessCcdTask - turning into a more normal looking exception, with code {}".format(e.code))
 
-#
-# @parsl.bash_app(cache=True, executors=["heavy"])
-# def pccd_process_by_id(repo: RepoInfo, id: str, stdout=parsl.AUTO_LOGNAME):
-#    return "processCcd.py {r} --id {id}".format(r=repo.cli(), id=id)
-#
+
+@parsl.bash_app(cache=True, executors=["heavy"])
+def pccd_process_by_id(repo: RepoInfo, id: str, stdout=parsl.AUTO_LOGNAME):
+    argslist = repo.cli()
+
+    if id:
+        argslist += " --id {}".format(id)
+    else:
+        argslist += " --id"
+
+    return "processCcd.py " + argslist
+
 
 @parsl.python_app(executors=["management"])
 def pccd_process(repo: RepoInfo):
@@ -200,10 +209,11 @@ def pccd_process(repo: RepoInfo):
     f.result()
 
 @parsl.python_app(cache=True, executors=["management"])
-def tutorial_2_show_data(previous_repo, checkpoint_hash=parsl.AUTO_LOGNAME):
+def tutorial_2_show_data(previous_repo):
     # logger.info("running some processCcd task")
 
-    new_repo = previous_repo.new_rerun(checkpoint_hash)
+    # new_repo = previous_repo.new_rerun()
+    new_repo = previous_repo
 
     # These two could run in parallel as a demo of running stuff
     # in parallel
@@ -237,7 +247,7 @@ def assembleCoadd(repo: RepoInfo, filter: str):
     return "assembleCoadd.py {r} --selectId filter={f} --id filter={f} tract=0 patch=0,0^0,1^0,2^1,0^1,1^1,2^2,0^2,1^2,2".format(r=repo.cli(), f=filter)
 
 @parsl.python_app(cache=True, executors=["management"])
-def tutorial_4_apps(repo: str, filter: str, checkpoint_hash=parsl.AUTO_LOGNAME):
+def tutorial_4_apps(repo: str, filter: str):
     f1 = makeCoaddTempExp(repo, filter)
     f1.result()
     f2 = assembleCoadd(repo, filter)
@@ -245,11 +255,11 @@ def tutorial_4_apps(repo: str, filter: str, checkpoint_hash=parsl.AUTO_LOGNAME):
 
 
 @parsl.python_app(cache=True, executors=["management"])
-def tutorial_4_coadd(previous_repo, checkpoint_hash=parsl.AUTO_LOGNAME):
+def tutorial_4_coadd(previous_repo):
     # logger.info("assembling processed CCD images into sky map")
 
-    new_repo = previous_repo.new_rerun(checkpoint_hash)
-
+    # new_repo = previous_repo.new_rerun()
+    new_repo = previous_repo
     f1 = makeDiscreteSkyMap(new_repo)
     f1.result()
 
@@ -258,7 +268,7 @@ def tutorial_4_coadd(previous_repo, checkpoint_hash=parsl.AUTO_LOGNAME):
     futures = []
     for filter in ["HSC-R", "HSC-I"]:
      #   logger.info("launching apps for filter {}".format(filter))
-        futures.append(tutorial_4_apps(new_repo, filter, checkpoint_hash=parsl.AUTO_LOGNAME))
+        futures.append(tutorial_4_apps(new_repo, filter))
 
     for future in futures:
      #   logger.info("waiting for a future from tutorial_4_apps")
@@ -273,11 +283,11 @@ parsl.load(config)
 
 base_repo = RepoInfo(REPO_BASE)
 
-t1_repo = tutorial_1_import(base_repo, checkpoint_hash=parsl.AUTO_LOGNAME)
+t1_repo = tutorial_1_import(base_repo)
 
-t2_repo = tutorial_2_show_data(t1_repo, checkpoint_hash=parsl.AUTO_LOGNAME)
+t2_repo = tutorial_2_show_data(t1_repo)
 
-t4_repo = tutorial_4_coadd(t2_repo, checkpoint_hash=parsl.AUTO_LOGNAME)
+t4_repo = tutorial_4_coadd(t2_repo)
 
 logger.info("Final t4_repo is: {}".format(t4_repo.result()))
 
