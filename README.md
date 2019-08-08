@@ -18,11 +18,16 @@ git-lfs is needed for large file support in the
 ci_hsc sampel repository. Install git-lfs from
 https://git-lfs.github.com/ 
 
+For example, something like this:
+
 ```
-mkdir git-lfs && cf git-fls
+mkdir git-lfs && cd git-fls
 curl -L -O https://github.com/git-lfs/git-lfs/releases/download/v2.7.2/git-lfs-linux-amd64-v2.7.2.tar.gz
 tar vxzvf git-lfs-linux-amd64-v2.7.2.tar.gz
 ```
+
+This probably should be made available inside the container
+image rather than being installed separately.
 
 ## parsl
 
@@ -31,7 +36,7 @@ than in a conda env (because there is already a read only
 conda env in use for the LSST code):
 
 ```
-git checkout ***parsl***
+git checkout https://github.com/Parsl/parsl
 cd parsl/
 pip install --user .
 ```
