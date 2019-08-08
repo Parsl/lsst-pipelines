@@ -1,19 +1,30 @@
+# System prereqs:
+
+Something that can run containers:
+
+ - cori account with shifter
+   Start with ``shifter --image=avillarreal/alcf_run2.0i:production201903``
+ - theta account with singularity
+ - personal workstation with docker
+
+Run everything in this README inside a copy of that
+container to ensure a consistent environment.
+
 # Software prereqs:
 
-cori account
-shifter (installed on cori already)
+## git-lfs
 
-This is likely to work on theta+singularity (as the imsim workflow
-uses basically the same container between cori and theta).
-
-Install git-lfs https://git-lfs.github.com/ for large file
-support in the ci_hsc sample repository.
+git-lfs is needed for large file support in the
+ci_hsc sampel repository. Install git-lfs from
+https://git-lfs.github.com/ 
 
 ```
 mkdir git-lfs && cf git-fls
 curl -L -O https://github.com/git-lfs/git-lfs/releases/download/v2.7.2/git-lfs-linux-amd64-v2.7.2.tar.gz
 tar vxzvf git-lfs-linux-amd64-v2.7.2.tar.gz
 ```
+
+## parsl
 
 Inside the container, install parsl into your home directory rather
 than in a conda env (because there is already a read only
@@ -25,18 +36,11 @@ cd parsl/
 pip install --user .
 ```
 
+# Per-run environment setup
 
-# Getting the environment set up each time:
-
-on cori:
-
-```
-shifter --image=avillarreal/alcf_run2.0i:production201903
-```
-
-Then inside the container, run these commands which will set up both
-LSST and imsim (the latter being not really necessary, but it's how
-the other users of this container do things)
+Inside the container, run these commands which will set up both
+LSST and imsim - the latter is probaby not necessary but it is
+how things were done in the imsim DC2 run.
 
 ```
 export PATH=../wherever/git-lfs:$PATH
@@ -54,30 +58,28 @@ setup pipe_tasks
 setup lsst_apps
 setup lsst_distrib
 
+# this is necessary on cori, but probably not in
+# other environments, because of how cori user accounts
+# are configured.
 unset PYTHONSTARTUP
 ```
 
-(- that's set in the container (and maybe on cori) when i'm running in
-a shell but PYTHONSTARTUP=/etc/pythonstart points to a script that
-doesn't exist in the container.
-unsetting it looks harmless - it seems to be to get command line history
-restored in interactive python.)
-
 # Run the tutorial
 
-Clear up after last run: (until I've figured out restart semantics properly):
+Clear up after last run (unless you're expecting to restart from checkpoints):
 
 ```
 $ rm -rf DATA/ ci_hsc/ *.stdout runinfo/* *.stderr  DATA*/
 ```
 
-Run the workflow:
+Run the tutorial workflow:
 
 ```
 python workflow.py
 ```
 
-As of now, the workflow takes about 1.5 hours to run.
+The workflow takes about 1.5 hours to run.
+
 
 # Assorted notes to self
 
