@@ -97,9 +97,6 @@ class RepoInfo:
         return f"RepoInfo({self.repo_base}, {self.rerun})"
 
 
-logger.info("Defining tutorial import subroutine")
-
-
 @parsl.bash_app
 def create_rerun(base, old, new):
     # this could be anything which is going to do nothing except make
@@ -111,12 +108,6 @@ def create_rerun(base, old, new):
     else:
         rr = "{old}:{new}".format(old=old, new=new)
     return ("processCcd.py {base} --rerun {rr} --id --show data").format(base=base, rr=rr)
-
-# the data files created in this app need to be persistent
-# the stuff under DATA/ is a permanent data store
-# and the stuff under ci_hsc is symlinked in - maybe it should
-# be hardlinked or copied? so that the ci_hsc stuff can be
-# a transient working directory?
 
 
 @parsl.bash_app(cache=True, executors=["heavy"])
@@ -132,6 +123,8 @@ def install_transmission_curves(repo: str):
 
 # the tutorial says should use ingestCalibs but they take a short cut
 # and do it the "wrong" way using ln - could replace that?
+# for more monitoring granualarity, could do some of these steps as
+# separate bash_apps
 @parsl.bash_app(cache=True, executors=["heavy"])
 def import_ci_hsc(repo: str, stdout="ingest.default.stdout",
                   stderr="ingest.default.stderr"):
