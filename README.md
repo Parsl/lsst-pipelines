@@ -49,24 +49,8 @@ how things were done in the imsim DC2 run.
 
 ```
 export PATH=../wherever/git-lfs:$PATH
-cd /DC2
-source /opt/lsst/software/stack/loadLSST.bash
-setup lsst_sims
-setup -r imSim -j
-export OMP_NUM_THREADS=1
 
-# not sure what this brings in? but it is in 
-# https://confluence.lsstcorp.org/display/LSWUG/Using+the+LSST+Stack
-setup pipe_tasks
-
-# from pipelines docs: https://pipelines.lsst.io/install/top-level-packages.html
-setup lsst_apps
-setup lsst_distrib
-
-# this is necessary on cori, but probably not in
-# other environments, because of how cori user accounts
-# are configured.
-unset PYTHONSTARTUP
+source ./setup
 ```
 
 # Run the tutorial
