@@ -41,6 +41,10 @@ cd parsl/
 pip install --user .
 ```
 
+In a more formalised environment, this would also be installed
+in the container, in that same conda environment, rather than
+being a user install.
+
 # Per-run environment setup
 
 Inside the container, run these commands which will set up both
